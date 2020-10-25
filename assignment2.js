@@ -29,6 +29,13 @@ class Cube_Outline extends Shape {
         // When a set of lines is used in graphics, you should think of the list entries as
         // broken down into pairs; each pair of vertices will be drawn as a line segment.
         // Note: since the outline is rendered with Basic_shader, you need to redefine the position and color of each vertex
+        this.arrays.position = Vector3.cast(
+            [-1, 1, 1], [-1, 1, -1], [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1], [-1, -1, 1], [-1, -1, -1],
+            [-1, 1, 1], [-1, -1, 1], [1, 1, 1], [1, -1, 1], [1, 1, -1], [1, -1, -1], [-1, 1, -1], [-1, -1, -1],
+            [-1, 1, 1], [1, 1, 1], [-1, -1, 1], [1, -1, 1], [-1, -1, -1], [1, -1, -1], [-1, 1, -1], [1, 1, -1])
+        this.arrays.color = Array(24).fill(0).map(x => color(1, 1, 1, 1))
+
+        this.indexed = false
     }
 }
 
@@ -38,8 +45,6 @@ class Cube_Single_Strip extends Shape {
         // TODO (Extra credit part I)
     }
 }
-
-
 class Base_Scene extends Scene {
     /**
      *  **Base_scene** is a Scene that can be added to any display canvas.
@@ -48,13 +53,13 @@ class Base_Scene extends Scene {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
-        this.hover = this.swarm = false;
+         this.sway = false;
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
             'cube': new Cube(),
             'outline': new Cube_Outline(),
         };
-
+        this.set_colors()
         // *** Materials
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
@@ -80,6 +85,7 @@ class Base_Scene extends Scene {
         // *** Lights: *** Values of vector or point lights.
         const light_position = vec4(0, 5, 5, 1);
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+
     }
 }
 
@@ -91,7 +97,8 @@ export class Assignment2 extends Base_Scene {
      * experimenting with matrix transformations.
      */
     set_colors() {
-        // TODO:  Create a class member variable to store your cube's colors.
+       // TODO:  Create a class member variable to store your cube's colors.
+        this.colors = Array(8).fill(0).map(x => color(Math.random(), Math.random(), Math.random, 1))
     }
 
     make_control_panel() {
@@ -100,26 +107,48 @@ export class Assignment2 extends Base_Scene {
         // Add a button for controlling the scene.
         this.key_triggered_button("Outline", ["o"], () => {
             // TODO:  Requirement 5b:  Set a flag here that will toggle your outline on and off
+            this.outline ^= 1
         });
         this.key_triggered_button("Sit still", ["m"], () => {
             // TODO:  Requirement 3d:  Set a flag here that will toggle your swaying motion on and off.
+            this.sway ^= 1
         });
     }
 
-    draw_box(context, program_state, model_transform) {
+    draw_box(context, program_state, model_transform, i) {
         // TODO:  Helper function for requirement 3 (see hint).
         //        This should make changes to the model_transform matrix, draw the next box, and return the newest model_transform.
+        const t = program_state.animation_time / 1000; // to change from millisecond to second
+        const frequency = 3
+        let f = 0.04/2*Math.PI*(Math.sin(2*frequency*Math.PI*t)+1)
+        if(this.sway)
+        {
+            f = 0.04*Math.PI
+        }
+        if(this.outline)
+        {
+            this.shapes.outline.draw(context, program_state, model_transform, this.white, "LINES");
+        }
+        else
+        {
+            this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:this.colors[i]}));
+        }
+        model_transform = model_transform.times(Mat4.translation(1, 1, 0))
+        .times(Mat4.rotation(-f, 0, 0, 1))
+        .times(Mat4.translation(-1,1,0))
 
         return model_transform;
     }
 
     display(context, program_state) {
         super.display(context, program_state);
-        const blue = hex_color("#1a9ffa");
         let model_transform = Mat4.identity();
-
-        // Example for drawing a cube, you can remove this line if needed
-        this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:blue}));
-        // TODO:  Draw your entire scene here.  Use this.draw_box( graphics_state, model_transform ) to call your helper.
+        //EXTRA CREDIT PART 2
+        model_transform = model_transform.times(Mat4.scale(1, 1.5, 1))
+        
+        for (let i =0; i<8; i++)
+          {    
+            model_transform = this.draw_box(context, program_state, model_transform, i)
+         }
     }
 }
